@@ -1,0 +1,152 @@
+import SpriteKit
+import AVFoundation
+
+class GameScene: SKScene, SKPhysicsContactDelegate {
+    
+    var backgroundMusicPlayer: AVAudioPlayer!
+    var jumpSound: SKAction!
+    var enemyJumpSound: SKAction!
+    var levelCompleteSound: SKAction!
+    
+    var netrunner: SKSpriteNode!
+    var coinLabel: SKLabelNode!
+    var healthBar: SKSpriteNode!
+    
+    let netrunnerCategory: UInt32 = 0x1 << 0
+    let enemyCategory: UInt32 = 0x1 << 1
+    let coinCategory: UInt32 = 0x1 << 2
+    let platformCategory: UInt32 = 0x1 << 3
+    let finishCategory: UInt32 = 0x1 << 4
+    
+    var coinsCollected = 0 {
+        didSet {
+            coinLabel.text = "Coins: \(coinsCollected)"
+        }
+    }
+    
+    var health = 3 {
+        didSet {
+            healthBar.size.width = CGFloat(health) * 50.0
+        }
+    }
+    
+    override func didMove(to view: SKView) {
+        playBackgroundMusic("backgroundMusic.mp3")
+        jumpSound = SKAction.playSoundFileNamed("jumpSound.wav", waitForCompletion: false)
+        enemyJumpSound = SKAction.playSoundFileNamed("enemyJumpSound.wav", waitForCompletion: false)
+        levelCompleteSound = SKAction.playSoundFileNamed("levelCompleteSound.wav", waitForCompletion: false)
+        
+        physicsWorld.contactDelegate = self
+        
+        setupLabels()
+        setupNetrunner()
+        setupPlatforms()
+        setupButtons()
+        // Add functions to spawn enemies and coins here
+    }
+    
+    func playBackgroundMusic(_ filename: String) {
+        if let asset = NSDataAsset(name: filename) {
+            do {
+                try backgroundMusicPlayer = AVAudioPlayer(data: asset.data)
+                backgroundMusicPlayer.numberOfLoops = -1
+                backgroundMusicPlayer.prepareToPlay()
+                backgroundMusicPlayer.play()
+            } catch let error as NSError {
+                print(error.localizedDescription)
+            }
+        }
+    }
+    
+    func setupLabels() {
+        coinLabel = SKLabelNode(fontNamed: "Arial")
+        coinLabel.fontSize = 36
+        coinLabel.fontColor = SKColor.black
+        coinLabel.position = CGPoint(x: 100, y: size.height - 50)
+        coinLabel.text = "Coins: 0"
+        addChild(coinLabel)
+        
+        healthBar = SKSpriteNode(color: SKColor.red, size: CGSize(width: 150, height: 20))
+        healthBar.position = CGPoint(x: size.width - 100, y: size.height - 30)
+        addChild(healthBar)
+    }
+    
+    func setupNetrunner() {
+        netrunner = SKSpriteNode(imageNamed: "netrunner")
+        netrunner.position = CGPoint(x: size.width * 0.1, y: size.height * 0.5)
+        netrunner.physicsBody = SKPhysicsBody(rectangleOf: netrunner.size)
+        netrunner.physicsBody?.categoryBitMask = netrunnerCategory
+        netrunner.physicsBody?.contactTestBitMask = enemyCategory | coinCategory
+        netrunner.physicsBody?.collisionBitMask = platformCategory
+        addChild(netrunner)
+    }
+    
+    func setupPlatforms() {
+        // Add your platform setup code here
+    }
+    
+    func setupButtons() {
+        let playButton = SKSpriteNode(imageNamed: "playButton")
+        playButton.name = "playButton"
+        playButton.position = CGPoint(x: size.width/2, y: size.height/2)
+        addChild(playButton)
+        
+        let pauseButton = SKSpriteNode(imageNamed: "pauseButton")
+        pauseButton.name = "pauseButton"
+        pauseButton.position = CGPoint(x: size.width - 50, y: size.height - 50)
+        addChild(pauseButton)
+    }
+    
+    func didBegin(_ contact: SKPhysicsContact) {
+        var firstBody: SKPhysicsBody
+        var secondBody: SKPhysicsBody
+        
+        if contact.bodyA.categoryBitMask < contact.bodyB.categoryBitMask {
+            firstBody = contact.bodyA
+            secondBody = contact.bodyB
+        } else {
+            firstBody = contact.bodyB
+            secondBody = contact.bodyA
+        }
+        
+        if firstBody.categoryBitMask == netrunnerCategory && secondBody.categoryBitMask == enemyCategory {
+            run(enemyJumpSound)
+            health -= 1
+            if health <= 0 {
+                // Game Over logic here
+            }
+            secondBody.node?.removeFromParent()
+        } else if firstBody.categoryBitMask == netrunnerCategory && secondBody.categoryBitMask == coinCategory {
+            coinsCollected += 1
+            secondBody.node?.removeFromParent()
+        } else if firstBody.categoryBitMask == netrunnerCategory && secondBody.categoryBitMask == finishCategory {
+            run(levelCompleteSound)
+            // Level Complete logic here
+        }
+    }
+    
+    override func touchesBegan(_ touches: Set<UITouch>, with event: UIEvent?) {
+        for touch in touches {
+            let location = touch.location(in: self)
+            let nodes = self.nodes(at: location)
+            
+            for node in nodes {
+                if node.name == "playButton" {
+                    // Start the game
+                    node.removeFromParent()
+                } else if node.name == "pauseButton" {
+                    if self.isPaused {
+                        // Resume the game
+                        self.isPaused = false
+                    } else {
+                        // Pause the game
+                        self.isPaused = true
+                    }
+                } else {
+                    netrunner.run(jumpSound)
+                    netrunner.run(SKAction.moveBy(x: 0, y: 200, duration: 0.5))
+                }
+            }
+        }
+    }
+}
