@@ -42,7 +42,7 @@ class GameScene: SKScene, SKPhysicsContactDelegate {
         setupNetrunner()
         setupPlatforms()
         setupButtons()
-        // Add functions to spawn enemies and coins here
+        // I need to add functions to spawn enemies and coins here
     }
     
     func playBackgroundMusic(_ filename: String) {
@@ -82,7 +82,7 @@ class GameScene: SKScene, SKPhysicsContactDelegate {
     }
     
     func setupPlatforms() {
-        // Add your platform setup code here
+        // Don't forget to add platform setup code here
     }
     
     func setupButtons() {
